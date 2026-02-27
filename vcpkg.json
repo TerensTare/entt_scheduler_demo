@@ -1,0 +1,11 @@
+{
+  "name": "entt-scheduler-demo",
+  "version-string": "0.1.0",
+  "maintainers": "Terens Tare",
+  "description": "A quick demo showing EnTT's new coroutine scheduler.",
+  "license": "MIT",
+  "builtin-baseline": "8cf84605ce9764de46caeb47b9e710db9493add9",
+  "dependencies": [
+    "entt"
+  ]
+}
