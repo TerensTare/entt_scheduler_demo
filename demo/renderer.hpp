@@ -16,6 +16,59 @@
 
 #include "coords.hpp"
 
+enum class fg : uint8_t
+{
+    none = 39,
+    black = 30,
+    red,
+    green,
+    yellow,
+    blue,
+    magenta,
+    cyan,
+    white,
+
+    bright_black = 90,
+    bright_red,
+    bright_green,
+    bright_yellow,
+    bright_blue,
+    bright_magenta,
+    bright_cyan,
+    bright_white,
+};
+
+enum class bg : uint8_t
+{
+    none = 49,
+    black = 40,
+    red,
+    green,
+    yellow,
+    blue,
+    magenta,
+    cyan,
+    white,
+
+    bright_black = 100,
+    bright_red,
+    bright_green,
+    bright_yellow,
+    bright_blue,
+    bright_magenta,
+    bright_cyan,
+    bright_white,
+};
+
+struct pixel
+{
+    char ch;
+    enum fg fg = fg::none;
+    enum bg bg = bg::none;
+
+    constexpr bool operator==(pixel const &) const noexcept = default;
+};
+
 struct renderer final
 {
     renderer(renderer const &) = delete;
@@ -33,7 +86,7 @@ struct renderer final
     inline renderer(int w, int h) noexcept
         : w{w}, h{h}
     {
-        auto memory = new char[2 * (w * h)];
+        auto memory = new pixel[2 * (w * h)];
         front = memory;
         back = memory + (w * h);
 
@@ -45,6 +98,7 @@ struct renderer final
 
     inline ~renderer()
     {
+        printf("\033[0m"); // just for reset
         delete[] front;
     }
 
@@ -53,11 +107,19 @@ struct renderer final
         memset(back, ch, w * h);
     }
 
-    inline void rune(int x, int y, char ch) noexcept { back[y * w + x] = ch; }
+    inline void rune(int x, int y, pixel px) noexcept { back[y * w + x] = px; }
+    inline void rune(int x, int y, char ch) noexcept { rune(x, y, {.ch = ch}); }
+
+    inline void rune(point p, pixel px) noexcept { rune(p.x, p.y, px); }
     inline void rune(point p, char ch) noexcept { rune(p.x, p.y, ch); }
 
-    // returns the number of lines that the string took
     inline int string(int line, std::string_view msg, int offset = 0) noexcept
+    {
+        return string(line, fg::none, bg::none, msg, offset);
+    }
+
+    // returns the number of lines that the string took
+    inline int string(int line, fg fgcol, bg bgcol, std::string_view msg, int offset = 0) noexcept
     {
         auto left = msg.size();
         auto str = msg.data();
@@ -66,7 +128,12 @@ struct renderer final
         while (left)
         {
             auto const len = std::min(size_t(w - offset), left);
-            std::copy_n(str, len, &back[line * w + offset]);
+            for (size_t i{}; i < len; ++i)
+                back[line * w + offset + i] = {
+                    .ch = str[i],
+                    .fg = fgcol,
+                    .bg = bgcol,
+                };
 
             ++line;
             left -= len;
@@ -88,7 +155,14 @@ struct renderer final
 
                 if (front[index] != back[index])
                 {
-                    printf("\033[%d;%dH%c", y + 1, x + 1, back[index]);
+                    auto p = back[index];
+                    printf(
+                        "\033[%d;%dH"      // position
+                        "\033[0;%d;%dm%c", // color
+                        y + 1, x + 1,
+                        (int)p.fg, (int)p.bg,
+                        p.ch //
+                    );
                     front[index] = back[index];
                 }
             }
@@ -117,5 +191,5 @@ private:
     }
 
     int w, h;
-    char *front, *back;
+    pixel *front, *back;
 };

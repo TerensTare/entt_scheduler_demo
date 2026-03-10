@@ -67,7 +67,6 @@ private:
     barrier turn_clock; // used to coordinate coroutines that should run once per turn (eg. enemy AI)
     action_map<player_action> player_actions = player_action_map;
     std::queue<std::string> hints;
-    std::string status_bar;
 
     // generic "factory"
     inline entt::entity make_actor(point initial_pos, tile t)
@@ -191,23 +190,6 @@ private:
         {
             co_await sched.schedule();
 
-            // TODO: do not show this on status bar, but somewhere else (since there might be many actors)
-            // TODO: also show speed
-            // TODO: probably best to order these by turn
-            // TODO: probably best to restrict to top 3 or top 5
-            for (auto [id, t, h] : reg.view<tile const, health const>().each())
-            {
-                // TODO: add a `symbol x count` text on for ease of access
-                std::format_to(
-                    std::back_inserter(status_bar),
-                    "|\033[41m{:<{}}\033[0m{:<{}}| {} x {}\n",
-                    "", h.value,         // "remaining health" bar
-                    "", h.max - h.value, // "maximum health - remaining"
-                    (char)t,
-                    h.value // number of health bars
-                );
-            }
-
             for (auto p : cartesian(map.w, map.h))
             {
                 game.ren.rune(p, (char)map.at(p));
@@ -227,8 +209,30 @@ private:
 
             j += 2;
 
-            j += game.ren.string(j, status_bar); // TODO: this should be 1 line
-            status_bar.clear();
+            // TODO: do not show this on status bar, but somewhere else (since there might be many actors)
+            // TODO: also show speed
+            // TODO: probably best to order these by turn
+            // TODO: probably best to restrict to top 3 or top 5
+            for (auto [id, t, h] : reg.view<tile const, health const>().each())
+            {
+                game.ren.rune({0, j}, '|');
+                for (int i{}; i < h.value; ++i)
+                    game.ren.rune(point{i + 1, j}, {.ch = ' ', .bg = bg::red});
+
+                for (int i = h.value; i < h.max; ++i)
+                    game.ren.rune(point{i + 1, j}, ' ');
+                game.ren.rune({h.value + 1, j}, '|');
+
+                game.ren.rune({h.max + 3, j}, (char)t); // symbol
+                game.ren.rune({h.max + 5, j}, 'x');     // x
+                {
+                    char buffer[32];
+                    auto end = std::format_to(buffer, "{}", h.max);
+                    game.ren.string(j, std::string_view{buffer, end}, h.max + 5); // count
+                }
+
+                j++;
+            }
         }
     }
 
