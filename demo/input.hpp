@@ -62,21 +62,23 @@ namespace detail
 #endif
     }
 
-    inline void cleanup_terminal() noexcept
+    inline fire_and_forget cleanup_terminal(scheduler &sched) noexcept
     {
 #ifdef _WIN32
 // no cleanup needed
 #else
+        co_await sched.when_done();
+
         tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 #endif
+
+        co_return;
     }
 }
 
-fire_and_forget listen_to_keyboard(scheduler &sched, event<char> &key)
+inline fire_and_forget listen_to_keyboard(scheduler &sched, event<char> &key)
 {
-    detail::setup_terminal();
-
-    while (!sched.done)
+    while (true)
     {
         co_await sched.schedule();
 
@@ -85,6 +87,13 @@ fire_and_forget listen_to_keyboard(scheduler &sched, event<char> &key)
             key.fire(ch);
         }
     }
+}
 
-    detail::cleanup_terminal();
+inline fire_and_forget keyboard_plugin(scheduler &sched, event<char> &key)
+{
+    detail::setup_terminal();
+    listen_to_keyboard(sched, key);
+    detail::cleanup_terminal(sched);
+
+    co_return;
 }

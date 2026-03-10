@@ -30,15 +30,9 @@ namespace detail
 }
 
 template <typename T = void>
-struct event final
+struct event final : pinned
 {
     event() = default;
-
-    event(event const &) = delete;
-    event &operator=(event const &) = delete;
-
-    event(event &&) = delete;
-    event &operator=(event &&) = delete;
 
     inline ~event()
     {
@@ -123,11 +117,11 @@ private:
 // });
 // ```
 template <typename T>
-fire_and_forget complete_on(scheduler &sched, event<T> &evt)
+inline fire_and_forget complete_on(scheduler &sched, event<T> &evt)
 {
-    while (!sched.done)
+    if (!sched.done())
     {
         (void)co_await evt.resume_on(sched);
-        sched.done = true;
+        sched.complete();
     }
 }

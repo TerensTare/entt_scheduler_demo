@@ -17,7 +17,6 @@ struct circular final
 {
     [[nodiscard]] constexpr bool empty() const noexcept { return !tail; }
 
-    // TODO: what if instead `&tail == tail.next` denotes empty?
     constexpr void push(T &node) noexcept
     {
         if (tail)
@@ -36,6 +35,7 @@ struct circular final
         }
     }
 
+    [[nodiscard]]
     constexpr T *pop() noexcept
     {
         if (tail)
@@ -49,9 +49,9 @@ struct circular final
             }
             else
             {
-                // head = head->next
+                // set head to head->next
                 auto head = tail->next;
-                tail->next = tail->next->next;
+                tail->next = head->next;
                 return head;
             }
         }
